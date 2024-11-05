@@ -12,11 +12,11 @@ contract ERC20TokenManager is ERC20, AccessControl {
     event MinterAdded(address indexed account);
 
     constructor(
-        string memory name,
-        string memory symbol
+        string memory tokenName,
+        string memory tokenSymbol
     ) ERC20(_name, _symbol) {
-        _name = name;
-        _symbol = symbol;
+        _name = tokenName;
+        _symbol = tokenSymbol;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
         emit MinterAdded(msg.sender);
