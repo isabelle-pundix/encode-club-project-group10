@@ -4,7 +4,7 @@ pragma solidity 0.8.22
 import "@openzeppelin/contracts/access/Ownable.sol";
 import { MembershipNFT } from "./MembershipNFT.sol";
 
-contract MembershipManager is Ownable, MembershipNFT {
+contract MembershipManager is Ownable {
     MembershipNFT public membershipNFT;
 
     /// @dev keccak256(bytes("InvalidUserAddress()"))
