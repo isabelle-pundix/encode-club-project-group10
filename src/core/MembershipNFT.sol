@@ -27,8 +27,6 @@ contract MembershipNFT is ERC721, ERC721URIStorage, Ownable {
     function burn(uint256 tokenId) public onlyOwner {
         _burn(tokenId);
     }
-        _setTokenURI(tokenId, uri);
-    }
 
     // The following functions are overrides required by Solidity.
 

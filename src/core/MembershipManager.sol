@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.22
+pragma solidity ^0.8.22;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import { MembershipNFT } from "./MembershipNFT.sol";
@@ -27,7 +27,6 @@ contract MembershipManager is Ownable {
     /**
     * @notice Maps a tokenId to its corresponding membership details.
     * @dev Stores metadata for each ERC721 token, including expiry date and membership tier.
-    * @param tokenId The unique identifier of the ERC721 token.
     */
     mapping(uint256 => Membership) public memberships;
 
@@ -35,8 +34,8 @@ contract MembershipManager is Ownable {
 
     event Subscribed(address user, uint256 tokenId, uint256 expiry, Tier tier);
 
-    constructor(address _membershipNFT) {
-        membershipNFT = _membershipNFT;
+    constructor(address _membershipNFT) Ownable(msg.sender) {
+        membershipNFT = MembershipNFT(_membershipNFT);
     }
 
     /**
@@ -63,13 +62,23 @@ contract MembershipManager is Ownable {
 
         uint256 tokenId = tokenIdCounter++;
 
-        membershipNFT.safeMint(user, tokenId);
+        // TODO: update URI here
+        membershipNFT.safeMint(user, tokenId, "");
 
         memberships[tokenId] = Membership({
             expiry: expiry,
             tier: tier
-        })
+        });
 
         emit Subscribed(user, tokenId, expiry, tier);
+    }
+
+    /**
+     * 
+     * @param _user to check membership
+     * @param _tier tier to check
+     */
+    function checkMembership(address _user, Tier _tier) public pure returns(bool) {
+        return true;
     }
 }
