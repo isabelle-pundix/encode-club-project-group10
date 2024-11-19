@@ -19,18 +19,26 @@ contract EventManager is Ownable {
 
     mapping(uint256=>Event) public events;
 
+    enum Tier {
+        Bronze,
+        Silver,
+        Gold
+    }
+
     /**
      * struct to define an event
      * @param eventId event id number
      * @param name event name
      * @param ticketPrice price of the ticket
      * @param currency token to buy ticket
+     * @param minimumTierRequired Gold membership can join Siler or Bronze tier required, not vice versa
      */
     struct Event {
         uint256 id;
         string name;
         uint256 ticketPrice;
         address currency;
+        tier minimumTierRequired;
     }
 
     event EventCreated(uint256 eventId, string name);
@@ -45,10 +53,10 @@ contract EventManager is Ownable {
      * @notice create new event, only the owner of EventManager contract can create new event 
      * @param name event name
      */
-    function createEvent(string calldata name, uint256 ticketPrice, adderss currency) public onlyOwner{
+    function createEvent(string calldata name, uint256 ticketPrice, adderss currency, Tier minimumTierRequired) public onlyOwner{
         // TODO: check currency is a ERC20 token
         eventId++;
-        ev = Event(eventId, name, ticketPrice, currency);
+        ev = Event(eventId, name, ticketPrice, currency, minimumTierRequired);
         emit EventCreated(eventId, name);
     }
 
@@ -58,8 +66,11 @@ contract EventManager is Ownable {
      * otherwise they have to buy a single ticket
      * @param eventId event id to register
      */
-    function register(uint256 eventId) public {
-        require(memberShipManager.checkMembership(msg.sender), "user without membership cannot register");
+    function register(uint256 _eventId) public {
+        require(_eventId < eventId, "The event does not exists");
+        ev = events[eventId];
+
+        require(memberShipManager.checkMembership(msg.sender, ev.minimumTierRequired), "user without membership cannot register");
 
         users = registeredUsers[eventId];
         users.push(msg.sender);
