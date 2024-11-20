@@ -22,7 +22,8 @@ contract MembershipManager is Ownable {
         0x4d0b0a4110e47e6169f53a1d2245341e3c0cc953a0850be747e8bd710ff9daa3;
 
     /// @dev keccak256(bytes("InvalidTier()"))
-    uint256 private constant INVALID_TIER_SIG = 0xabc;
+    uint256 private constant INVALID_TIER_SIG =
+        0xe14236173d4f5600d7f126a48aa8c8fbafc0bd654dcfc3c9dfb84a5145cb00b2;
 
     enum Tier {
         Bronze,
@@ -33,13 +34,15 @@ contract MembershipManager is Ownable {
     struct Membership {
         uint256 expiry;
         Tier tier;
+        uint256 tokenId;
     }
 
     /**
-     * @notice Maps a tokenId to its corresponding membership details.
-     * @dev Stores metadata for each ERC721 token, including expiry date and membership tier.
+     * @notice Maps a user's address to their memberships by token ID.
+     * @dev The user address is the outer key and inner key is tokenId.
+     * Each token ID corresponds to a `Membership` struct, which stores the details of the membership.
      */
-    mapping(uint256 => Membership) public memberships;
+    mapping(address => mapping(Tier => Membership)) public memberships;
 
     uint256 private tokenIdCounter;
 
@@ -108,7 +111,11 @@ contract MembershipManager is Ownable {
 
         membershipNFT.safeMint(user, tokenId, tokenUri);
 
-        memberships[tokenId] = Membership({expiry: expiry, tier: tier});
+        memberships[user][tier] = Membership({
+            expiry: expiry,
+            tier: tier,
+            tokenId: tokenId
+        });
 
         emit Subscribed(user, tokenId, expiry, tier);
     }
@@ -137,14 +144,16 @@ contract MembershipManager is Ownable {
     }
 
     /**
-     *
-     * @param _user to check membership
-     * @param _tier tier to check
+     * @dev Checks if the user has a valid membership of the specified tier.
+     * @param _user The address of the user to check.
+     * @param _tier The membership tier to check (0 = Bronze, 1 = Silver, 2 = Gold).
+     * @return A boolean indicating if the user has a valid membership of the specified tier.
      */
     function checkMembership(
         address _user,
         Tier _tier
-    ) public pure returns (bool) {
-        return true;
+    ) public view returns (bool) {
+        Membership memory membership = memberships[_user][_tier];
+        return membership.expiry > block.timestamp;
     }
 }
