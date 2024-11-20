@@ -9,6 +9,7 @@ import {ERC20TokenManager} from "./MembershipToken.sol";
 contract MembershipManager is Ownable {
     MembershipNFT public membershipNFT;
     ERC20TokenManager public membershipToken;
+    address public multiSigWallet;
 
     string public baseUriBronze;
     string public baseUriSilver;
@@ -25,6 +26,10 @@ contract MembershipManager is Ownable {
     /// @dev keccak256(bytes("InvalidTier()"))
     uint256 private constant INVALID_TIER_SIG =
         0xe14236173d4f5600d7f126a48aa8c8fbafc0bd654dcfc3c9dfb84a5145cb00b2;
+
+    /// @dev keccak256(bytes("ZeroBalance()"))
+    uint256 private constant ZERO_BALANCE_SIG =
+        0x669567ea45849e2be6dd4df6e83e9e07b5ea429935d0a5a24f25812fa72480b4;
 
     enum Tier {
         Bronze,
@@ -54,7 +59,8 @@ contract MembershipManager is Ownable {
         address _membershipToken,
         string memory _baseUriBronze,
         string memory _baseUriSilver,
-        string memory _baseUriGold
+        string memory _baseUriGold,
+        address _multiSigWallet
     ) Ownable(msg.sender) {
         membershipNFT = MembershipNFT(_membershipNFT);
         membershipToken = ERC20TokenManager(_membershipToken);
@@ -62,6 +68,8 @@ contract MembershipManager is Ownable {
         baseUriBronze = _baseUriBronze;
         baseUriSilver = _baseUriSilver;
         baseUriGold = _baseUriGold;
+
+        multiSigWallet = _multiSigWallet;
     }
 
     /**
@@ -171,6 +179,10 @@ contract MembershipManager is Ownable {
             );
     }
 
+    /**
+     * @dev Converts a `Tier` enum value to its corresponding string representation.
+     * @param tier The `Tier` enum value to convert (Bronze, Silver, or Gold).
+     */
     function _tierToString(Tier tier) internal pure returns (string memory) {
         if (tier == Tier.Bronze) {
             return "Bronze";
@@ -180,6 +192,19 @@ contract MembershipManager is Ownable {
             return "Gold";
         }
         return "";
+    }
+
+    function withdraw() external onlyOwner {
+        uint256 balance = membershipToken.balanceOf(address(this));
+
+        if (balance == 0) {
+            assembly {
+                mstore(0x00, ZERO_BALANCE_SIG)
+                revert(0x1c, 0x04)
+            }
+        }
+
+        membershipToken.transfer(multiSigWallet, balance);
     }
 
     /**
