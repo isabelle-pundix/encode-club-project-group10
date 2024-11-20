@@ -2,6 +2,7 @@
 pragma solidity ^0.8.22;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Base64.sol";
 import {MembershipNFT} from "./MembershipNFT.sol";
 import {ERC20TokenManager} from "./MembershipToken.sol";
 
@@ -107,7 +108,7 @@ contract MembershipManager is Ownable {
 
         uint256 tokenId = tokenIdCounter++;
 
-        string memory tokenUri = _generateTokenUri(tier, tokenId);
+        string memory tokenUri = _generateTokenUri(tier, tokenId, expiry);
 
         membershipNFT.safeMint(user, tokenId, tokenUri);
 
@@ -127,20 +128,58 @@ contract MembershipManager is Ownable {
      */
     function _generateTokenUri(
         Tier tier,
-        uint256 tokenId
-    ) internal view returns (string memory) {
+        uint256 tokenId,
+        uint256 expiry
+    ) public view returns (string memory) {
+        string memory baseUri;
+
         if (tier == Tier.Bronze) {
-            return string(abi.encodePacked(baseUriBronze, tokenId));
+            baseUri = baseUriBronze;
         } else if (tier == Tier.Silver) {
-            return string(abi.encodePacked(baseUriSilver, tokenId));
+            baseUri = baseUriSilver;
         } else if (tier == Tier.Gold) {
-            return string(abi.encodePacked(baseUriGold, tokenId));
+            baseUri = baseUriGold;
         } else {
             assembly {
                 mstore(0x00, INVALID_TIER_SIG)
                 revert(0x1c, 0x04)
             }
         }
+
+        return
+            string(
+                abi.encodePacked(
+                    "data:application/json;base64,",
+                    Base64.encode(
+                        bytes(
+                            abi.encodePacked(
+                                '{"name":"Membership #',
+                                tokenId,
+                                '", "description":"Membership with ',
+                                _tierToString(tier),
+                                ' benefits.", "expiry": "',
+                                expiry,
+                                '", "image":"',
+                                baseUri,
+                                '", "tier": "',
+                                _tierToString(tier),
+                                '"}'
+                            )
+                        )
+                    )
+                )
+            );
+    }
+
+    function _tierToString(Tier tier) internal pure returns (string memory) {
+        if (tier == Tier.Bronze) {
+            return "Bronze";
+        } else if (tier == Tier.Silver) {
+            return "Silver";
+        } else if (tier == Tier.Gold) {
+            return "Gold";
+        }
+        return "";
     }
 
     /**

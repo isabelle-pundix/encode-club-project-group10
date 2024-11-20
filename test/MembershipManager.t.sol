@@ -84,19 +84,11 @@ contract MembershipManagerTest is Test {
         assertEq(expiryStored, expiry, "Expiry does not match");
         assertEq(uint256(tierStored), uint256(tier), "Tier does not match");
 
-        string memory expectedUri;
-
-        if (tier == MembershipManager.Tier.Bronze) {
-            expectedUri = string(
-                abi.encodePacked(baseUriBronze, tokenIdStored)
-            );
-        } else if (tier == MembershipManager.Tier.Silver) {
-            expectedUri = string(
-                abi.encodePacked(baseUriSilver, tokenIdStored)
-            );
-        } else if (tier == MembershipManager.Tier.Gold) {
-            expectedUri = string(abi.encodePacked(baseUriGold, tokenIdStored));
-        }
+        string memory expectedUri = membershipManager._generateTokenUri(
+            tierStored,
+            tokenIdStored,
+            expiry
+        );
 
         assertEq(
             membershipNFT.tokenURI(tokenIdStored),
