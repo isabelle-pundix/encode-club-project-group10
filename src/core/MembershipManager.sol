@@ -88,7 +88,7 @@ contract MembershipManager is Ownable {
         uint256 expiry,
         Tier tier,
         uint256 numTokens
-    ) external onlyOwner {
+    ) external {
         if (user == address(0)) {
             assembly {
                 mstore(0x00, INVALID_USER_ADDRESS_SIG)
@@ -133,8 +133,8 @@ contract MembershipManager is Ownable {
             return string(abi.encodePacked(baseUriBronze, tokenId));
         } else if (tier == Tier.Silver) {
             return string(abi.encodePacked(baseUriSilver, tokenId));
-        } else if (tier == Tier.Bronze) {
-            return string(abi.encodePacked(baseUriBronze, tokenId));
+        } else if (tier == Tier.Gold) {
+            return string(abi.encodePacked(baseUriGold, tokenId));
         } else {
             assembly {
                 mstore(0x00, INVALID_TIER_SIG)
