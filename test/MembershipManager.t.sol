@@ -20,8 +20,12 @@ contract MembershipManagerTest is Test {
     uint256 private constant INVALID_TIER_SIG =
         0xe14236173d4f5600d7f126a48aa8c8fbafc0bd654dcfc3c9dfb84a5145cb00b2;
 
+    uint256 private constant ZERO_BALANCE_SIG =
+        0x669567ea45849e2be6dd4df6e83e9e07b5ea429935d0a5a24f25812fa72480b4;
+
     address constant OWNER = address(1);
     address constant USER = address(2);
+    address constant MULTISIG = address(3);
 
     string public baseUriBronze = "ipfs://bronze/";
     string public baseUriSilver = "ipfs://silver/";
@@ -43,10 +47,12 @@ contract MembershipManagerTest is Test {
             address(membershipToken),
             baseUriBronze,
             baseUriSilver,
-            baseUriGold
+            baseUriGold,
+            MULTISIG
         );
 
         membershipNFT.transferOwnership(address(membershipManager));
+        membershipManager.transferOwnership(OWNER);
 
         membershipToken.mint(USER, initialTokenBalance);
     }
@@ -150,5 +156,40 @@ contract MembershipManagerTest is Test {
             abi.encodeWithSelector(bytes4(uint32(INVALID_BLOCK_TIMESTAMP_SIG)))
         );
         membershipManager.subscribe(USER, expiry, tier, numTokens);
+    }
+
+    /**
+     * @dev Test successful withdrawal by contract owner
+     */
+    function testFuzz_Withdraw(uint256 initialSupply) public {
+        initialSupply = bound(initialSupply, 1, type(uint256).max / 2);
+        membershipToken.mint(address(membershipManager), initialTokenBalance);
+
+        vm.prank(OWNER);
+        membershipManager.withdraw();
+
+        assertEq(
+            membershipToken.balanceOf(address(membershipManager)),
+            0,
+            "Contract balance mismatch after withdrawal"
+        );
+        assertEq(
+            membershipToken.balanceOf(MULTISIG),
+            initialTokenBalance,
+            "Contract balance mismatch after transfer"
+        );
+    }
+
+    /**
+     * @dev Test unsuccessful withdrawal by contract owner
+     * if contract ERC20 token balance = 0
+     */
+    function testFuzz_Withdraw_ZeroBalance() public {
+        vm.prank(OWNER);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(bytes4(uint32(ZERO_BALANCE_SIG)))
+        );
+        membershipManager.withdraw();
     }
 }

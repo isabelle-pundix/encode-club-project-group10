@@ -53,6 +53,7 @@ contract MembershipManager is Ownable {
     uint256 private tokenIdCounter;
 
     event Subscribed(address user, uint256 tokenId, uint256 expiry, Tier tier);
+    event WithdrawnFunds(uint256 tokenAmount);
 
     constructor(
         address _membershipNFT,
@@ -194,6 +195,10 @@ contract MembershipManager is Ownable {
         return "";
     }
 
+    /**
+     * @notice Withdraws all ERC20 tokens from the contract to the multisig wallet.
+     * @dev Can only be called by the contract owner.
+     */
     function withdraw() external onlyOwner {
         uint256 balance = membershipToken.balanceOf(address(this));
 
@@ -205,6 +210,7 @@ contract MembershipManager is Ownable {
         }
 
         membershipToken.transfer(multiSigWallet, balance);
+        emit WithdrawnFunds(balance);
     }
 
     /**
