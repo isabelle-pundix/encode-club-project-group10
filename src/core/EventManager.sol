@@ -39,8 +39,8 @@ contract EventManager is Ownable {
 
     event RegisterSuccess(uint256 eventId, address user);
 
-    constructor(address owner, address _memberShipManager) Ownable(owner) {
-        memberShipManager = MembershipManager(_memberShipManager);
+    constructor(address owner, MembershipManager _memberShipManager) Ownable(owner) {
+        memberShipManager = _memberShipManager;
     }
 
     /**
