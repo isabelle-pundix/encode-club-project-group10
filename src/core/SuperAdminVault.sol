@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract superAdminVault is AccessControl, ReentrancyGuard, Pausable {
     IERC20 public token;
@@ -48,8 +49,8 @@ contract superAdminVault is AccessControl, ReentrancyGuard, Pausable {
     function validateAndAssignErc20TOken(
         address _token
     ) internal returns (IERC20) {
-        try IERC20(_token).totalSupply() returns (uint256) {
-            token = IERC20(_token);
+        try ERC20(_token).totalSupply() returns (uint256) {
+            token = ERC20(_token);
             return token;
         } catch {
             revert("Not an ERC20 token");
@@ -73,9 +74,9 @@ contract superAdminVault is AccessControl, ReentrancyGuard, Pausable {
         whenNotPaused
         returns (bool)
     {
-        require(msg.sender == mintAccount);
         uint256 mintAccountBalance = getMintAccountBalance();
         require(amount <= mintAccountBalance, "Insufficient fund");
+
         bool success = token.approve(address(this), amount);
         return success;
     }
@@ -170,12 +171,12 @@ contract superAdminVault is AccessControl, ReentrancyGuard, Pausable {
         uint256 amount
     ) external onlySuperAdmin nonReentrant {
         require(amount > 0, "Amount must be greater than zero");
-        IERC20 tokenToRecover = IERC20(tokenAddress);
+        ERC20 tokenToRecover = ERC20(tokenAddress);
         require((tokenToRecover.transfer(superAdmin, amount)));
     }
 
     function transferSuperAdmin(address newSuperAdmin) external onlySuperAdmin {
-        require(newSuperAdmin != address(0), "Cannot transfer ro zero address");
+        require(newSuperAdmin != address(0), "Cannot transfer to zero address");
         superAdmin = newSuperAdmin;
         emit superAdminTransferred(superAdmin, newSuperAdmin);
     }

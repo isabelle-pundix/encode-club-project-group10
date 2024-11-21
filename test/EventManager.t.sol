@@ -7,6 +7,7 @@ import {MembershipManager} from "src/core/MembershipManager.sol";
 import {MembershipNFT} from "src/core/MembershipNFT.sol";
 import {console} from "forge-std/console.sol";
 import {ERC20TokenManager} from "../src/core/MembershipToken.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 
 contract EventManagerTest is Test {
@@ -20,10 +21,12 @@ contract EventManagerTest is Test {
     string public baseUriBronze = "ipfs://bronze/";
     string public baseUriSilver = "ipfs://silver/";
     string public baseUriGold = "ipfs://gold/";
+    
+    address initialOwner = vm.addr(1);
 
     function setUp() public {
-        address initialOwner = vm.addr(1);
         membershipNFT = new MembershipNFT(initialOwner);
+        membershipToken = new ERC20TokenManager("testToken", "TT");
         membershipManager = new MembershipManager(
             address(membershipNFT),
             address(membershipToken),
@@ -39,6 +42,8 @@ contract EventManagerTest is Test {
      * 
      */
     function test_create_event() public {
+        vm.prank(initialOwner);
+        instance.createEvent("test", 1000, address(membershipToken), MembershipManager.Tier.Bronze);
     }
 
     /**
@@ -50,10 +55,18 @@ contract EventManagerTest is Test {
     }
 
     /**
-     * @dev test buy ticket revert
+     * @dev test buy ticket free
      */
-    function test_buy_ticket_failed() public {
+    function test_buy_ticket_free() public {
+        uint256 balance;
+        membershipToken.mint(initialOwner, 1000000);
+        balance = ERC20(membershipToken).balanceOf(initialOwner);
+        assertEq(balance, 1000000);
 
+        vm.prank(initialOwner);
+        instance.createEvent("first", 0, address(membershipToken), MembershipManager.Tier.Bronze);
+        ERC20(membershipToken).approve(address(instance), 1000000);
+        instance.buyTicket(1);
     }
 
 }
