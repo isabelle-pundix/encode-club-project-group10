@@ -15,10 +15,6 @@ contract MembershipManager is Ownable {
     string public baseUriSilver;
     string public baseUriGold;
 
-    /// @dev keccak256(bytes("InvalidUserAddress()"))
-    uint256 private constant INVALID_USER_ADDRESS_SIG =
-        0x702b3d90f44158a18c5c3e31f1a4b131a521a8262feaaa50809661550c6b0e87;
-
     /// @dev keccak256(bytes("InvalidBlockTimestamp()"))
     uint256 private constant INVALID_BLOCK_TIMESTAMP_SIG =
         0x4d0b0a4110e47e6169f53a1d2245341e3c0cc953a0850be747e8bd710ff9daa3;
@@ -30,6 +26,14 @@ contract MembershipManager is Ownable {
     /// @dev keccak256(bytes("ZeroBalance()"))
     uint256 private constant ZERO_BALANCE_SIG =
         0x669567ea45849e2be6dd4df6e83e9e07b5ea429935d0a5a24f25812fa72480b4;
+
+    /// @dev keccak256(bytes("MembershipStillActive()"))
+    uint256 private constant MEMBERSHIP_STILL_ACTIVE_SIG =
+        0xf42c5e24db9eab31ca356bd1ad75ec255cdc236e0a816e678ccf8a7f1be71528;
+
+    /// @dev keccak256(bytes("InvalidOwner()"))
+    uint256 private constant INVALID_OWNER_SIG =
+        0x49e27cffb37b1ca4a9bf5318243b2014d13f940af232b8552c208bdea15739da;
 
     enum Tier {
         Bronze,
@@ -54,6 +58,12 @@ contract MembershipManager is Ownable {
 
     event Subscribed(address user, uint256 tokenId, uint256 expiry, Tier tier);
     event WithdrawnFunds(uint256 tokenAmount);
+    event RenewedMembership(
+        address user,
+        uint256 tokenId,
+        uint256 expiry,
+        Tier tier
+    );
 
     constructor(
         address _membershipNFT,
@@ -89,23 +99,11 @@ contract MembershipManager is Ownable {
     /**
      * @dev Subscribe a user to a membership.
      * Mints an ERC721 token and assigns membership metadata.
-     * @param user The address of the user subscribing.
      * @param expiry The expiry time of the membership.
      * @param tier The tier of the membership (0 = Bronze, 1 = Silver, 2 = Gold).
+     * @param numTokens The number of ERC20 tokens required.
      */
-    function subscribe(
-        address user,
-        uint256 expiry,
-        Tier tier,
-        uint256 numTokens
-    ) external {
-        if (user == address(0)) {
-            assembly {
-                mstore(0x00, INVALID_USER_ADDRESS_SIG)
-                revert(0x1c, 0x04)
-            }
-        }
-
+    function subscribe(uint256 expiry, Tier tier, uint256 numTokens) external {
         if (expiry <= block.timestamp) {
             assembly {
                 mstore(0x00, INVALID_BLOCK_TIMESTAMP_SIG)
@@ -113,21 +111,21 @@ contract MembershipManager is Ownable {
             }
         }
 
-        membershipToken.transferFrom(user, address(this), numTokens);
+        membershipToken.transferFrom(msg.sender, address(this), numTokens);
 
         uint256 tokenId = tokenIdCounter++;
 
         string memory tokenUri = _generateTokenUri(tier, tokenId, expiry);
 
-        membershipNFT.safeMint(user, tokenId, tokenUri);
+        membershipNFT.safeMint(msg.sender, tokenId, tokenUri);
 
-        memberships[user][tier] = Membership({
+        memberships[msg.sender][tier] = Membership({
             expiry: expiry,
             tier: tier,
             tokenId: tokenId
         });
 
-        emit Subscribed(user, tokenId, expiry, tier);
+        emit Subscribed(msg.sender, tokenId, expiry, tier);
     }
 
     /**
@@ -225,5 +223,57 @@ contract MembershipManager is Ownable {
     ) public view returns (bool) {
         Membership memory membership = memberships[_user][_tier];
         return membership.expiry > block.timestamp;
+    }
+
+    /**
+     * @notice Renews an expired membership by extending its expiry and updating metadata.
+     * @param tier The tier of the membership being renewed (0 = Bronze, 1 = Silver, 2 = Gold).
+     * @param newExpiry The new expiry time for the membership.
+     * @param numTokens The number of tokens required for the renewal.
+     */
+    function renewMembership(
+        Tier tier,
+        uint256 tokenId,
+        uint256 newExpiry,
+        uint256 numTokens
+    ) external {
+        if (membershipNFT.ownerOf(tokenId) != msg.sender) {
+            assembly {
+                mstore(0x00, INVALID_OWNER_SIG)
+                revert(0x1c, 0x04)
+            }
+        }
+
+        Membership memory membership = memberships[msg.sender][tier];
+
+        if (membership.expiry >= block.timestamp) {
+            assembly {
+                mstore(0x00, MEMBERSHIP_STILL_ACTIVE_SIG)
+                revert(0x1c, 0x04)
+            }
+        }
+
+        if (newExpiry <= block.timestamp) {
+            assembly {
+                mstore(0x00, INVALID_BLOCK_TIMESTAMP_SIG)
+                revert(0x1c, 0x04)
+            }
+        }
+
+        membershipToken.transferFrom(msg.sender, address(this), numTokens);
+
+        membership.expiry = newExpiry;
+
+        string memory newTokenUri = _generateTokenUri(tier, tokenId, newExpiry);
+
+        membershipNFT.update(tokenId, newTokenUri);
+
+        memberships[msg.sender][tier] = Membership({
+            expiry: newExpiry,
+            tier: tier,
+            tokenId: tokenId
+        });
+
+        emit RenewedMembership(msg.sender, tokenId, newExpiry, tier);
     }
 }
